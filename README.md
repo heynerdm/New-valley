@@ -96,6 +96,22 @@
 
 ---
 
+## 🚀 Despliegue rápido en Render
+
+1. Crea una cuenta en https://render.com.
+2. Selecciona "New Web Service" y conecta tu repositorio de GitHub `heynerdm/New-valley`.
+3. Elige el branch `main`.
+4. Usa estos valores:
+   - Build Command: `pip install -r requirements.txt`
+   - Start Command: `gunicorn app:app --bind 0.0.0.0:$PORT`
+   - Environment: `Python 3`
+5. Añade la variable de entorno `GEMINI_API_KEY` con tu clave.
+6. (Opcional) Añade `GEMINI_MODEL_NAME=gemini-flash-latest`.
+
+Render detectará `Procfile` y `render.yaml` para desplegar la app.
+
+> Al finalizar, Render te dará un enlace público que puedes compartir para que la app esté disponible desde cualquier lugar.
+
 ## 📁 Carpeta de evidencia
 
 Se ha creado la carpeta `evidence/` para subir las capturas de pantalla y la evidencia de funcionamiento.
