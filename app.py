@@ -1,8 +1,8 @@
+import csv
 import logging
 import os
 from pathlib import Path
 
-import pandas as pd
 from flask import Flask, request, jsonify
 import google.generativeai as genai
 
@@ -24,20 +24,22 @@ CSV_PATH = Path(__file__).resolve().parent / "data" / "FAQ_New_Valley_Decoracion
 
 def read_faq():
     try:
-        df = pd.read_csv(CSV_PATH)
-        faqs = []
-        for _, row in df.iterrows():
-            faqs.append({
-                "id": int(row["id"]) if "id" in row and not pd.isna(row["id"]) else None,
-                "categoria": str(row.get("categoria", "")).strip(),
-                "pregunta": str(row.get("pregunta", "")).strip(),
-                "respuesta": str(row.get("respuesta", "")).strip(),
-            })
+        with open(CSV_PATH, newline="", encoding="utf-8") as csvfile:
+            reader = csv.DictReader(csvfile)
+            faqs = []
+            for row in reader:
+                faq_id = (row.get("id") or "").strip()
+                faqs.append({
+                    "id": int(faq_id) if faq_id.isdigit() else None,
+                    "categoria": (row.get("categoria") or "").strip(),
+                    "pregunta": (row.get("pregunta") or "").strip(),
+                    "respuesta": (row.get("respuesta") or "").strip(),
+                })
         return faqs
     except FileNotFoundError:
         logging.error("No se encontró el archivo CSV de FAQ en %s", CSV_PATH)
         return []
-    except Exception as exc:
+    except Exception:
         logging.exception("Error leyendo el CSV de FAQ")
         return []
 
