@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>New Valley - Asistente</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        background: #f4f4f4;
+        color: #333;
+      }
+      header {
+        background: #1a5f27;
+        color: white;
+        padding: 24px 32px;
+        text-align: center;
+      }
+      .container {
+        max-width: 900px;
+        margin: 24px auto;
+        padding: 0 16px;
+      }
+      .box {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        padding: 24px;
+        margin-bottom: 24px;
+      }
+      .box h2 {
+        margin-top: 0;
+      }
+      .chat-area {
+        display: grid;
+        gap: 12px;
+        margin-bottom: 18px;
+      }
+      .chat-message {
+        padding: 14px 18px;
+        border-radius: 14px;
+        max-width: 78%;
+        line-height: 1.6;
+      }
+      .chat-message.user {
+        background: #e7f5e7;
+        margin-left: auto;
+      }
+      .chat-message.bot {
+        background: #f0f0f0;
+        margin-right: auto;
+      }
+      textarea {
+        width: 100%;
+        min-height: 110px;
+        padding: 14px;
+        border-radius: 12px;
+        border: 1px solid #ddd;
+        resize: vertical;
+        font-size: 16px;
+      }
+      button {
+        background: #1a5f27;
+        color: white;
+        border: none;
+        padding: 14px 24px;
+        border-radius: 12px;
+        cursor: pointer;
+        font-size: 16px;
+      }
+      button:hover {
+        background: #154b21;
+      }
+      .faq-grid {
+        display: grid;
+        gap: 14px;
+      }
+      .faq-item {
+        padding: 16px;
+        border: 1px solid #e0e0e0;
+        border-radius: 14px;
+        background: #fafafa;
+      }
+      .faq-item h3 {
+        margin: 0 0 8px;
+        font-size: 16px;
+      }
+      .status {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 12px;
+      }
+      .status-badge {
+        background: #effaf1;
+        border: 1px solid #c7ebca;
+        border-radius: 999px;
+        padding: 8px 14px;
+        font-size: 14px;
+      }
+      .info-line {
+        color: #555;
+        margin-top: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>New Valley - Asistente de FAQ</h1>
+      <p>Consulta información basada en nuestra base de conocimiento.</p>
+    </header>
+    <main class="container">
+      <section class="box">
+        <h2>Chat</h2>
+        <div class="chat-area" id="chatArea"></div>
+        <textarea id="messageInput" placeholder="Escribe tu pregunta aquí..."></textarea>
+        <div style="margin-top: 14px; text-align: right;">
+          <button id="sendButton">Enviar pregunta</button>
+        </div>
+        <p class="info-line" id="responseInfo"></p>
+      </section>
+
+      <section class="box">
+        <h2>Información del servicio</h2>
+        <div class="status" id="statusArea"></div>
+      </section>
+
+      <section class="box">
+        <h2>Preguntas frecuentes</h2>
+        <div class="faq-grid" id="faqList"></div>
+      </section>
+    </main>
+
+    <script>
+      const chatArea = document.getElementById('chatArea');
+      const messageInput = document.getElementById('messageInput');
+      const sendButton = document.getElementById('sendButton');
+      const responseInfo = document.getElementById('responseInfo');
+      const statusArea = document.getElementById('statusArea');
+      const faqList = document.getElementById('faqList');
+
+      async function fetchStatus() {
+        try {
+          const response = await fetch('/api/health');
+          const data = await response.json();
+          statusArea.innerHTML = `
+            <div class="status-badge">FAQs cargadas: ${data.loaded_faqs}</div>
+            <div class="status-badge">Modelo: ${data.selected_model}</div>
+            <div class="status-badge">Modelos disponibles: ${data.available_models}</div>
+            <div class="status-badge">API key: ${data.api_key_set ? 'Sí' : 'No'}</div>
+          `;
+        } catch (error) {
+          statusArea.innerHTML = '<div class="status-badge">Error cargando el estado</div>';
+        }
+      }
+
+      async function fetchFaqs() {
+        try {
+          const response = await fetch('/api/faq');
+          const data = await response.json();
+          faqList.innerHTML = data.faqs
+            .slice(0, 8)
+            .map(
+              (faq) => `
+                <article class="faq-item">
+                  <h3>${faq.pregunta}</h3>
+                  <p>${faq.respuesta}</p>
+                </article>
+              `,
+            )
+            .join('');
+        } catch (error) {
+          faqList.innerHTML = '<div class="faq-item">No se pudieron cargar las FAQs.</div>';
+        }
+      }
+
+      async function sendMessage() {
+        const message = messageInput.value.trim();
+        if (!message) {
+          return;
+        }
+
+        chatArea.innerHTML += `<div class="chat-message user"><strong>Tú:</strong><br>${message}</div>`;
+        messageInput.value = '';
+        responseInfo.textContent = 'Enviando pregunta...';
+
+        try {
+          const res = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message }),
+          });
+          const body = await res.json();
+
+          if (res.ok) {
+            chatArea.innerHTML += `<div class="chat-message bot"><strong>New Valley:</strong><br>${body.response}</div>`;
+            responseInfo.textContent = 'Respuesta recibida.';
+          } else {
+            chatArea.innerHTML += `<div class="chat-message bot"><strong>Error:</strong><br>${body.error || 'Error desconocido'}</div>`;
+            responseInfo.textContent = 'No se pudo obtener respuesta.';
+          }
+        } catch (error) {
+          chatArea.innerHTML += `<div class="chat-message bot"><strong>Error:</strong><br>Fallo la conexión.</div>`;
+          responseInfo.textContent = 'No se pudo conectar al servicio.';
+        }
+
+        chatArea.scrollTop = chatArea.scrollHeight;
+      }
+
+      sendButton.addEventListener('click', sendMessage);
+      messageInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' && !event.shiftKey) {
+          event.preventDefault();
+          sendMessage();
+        }
+      });
+
+      fetchStatus();
+      fetchFaqs();
+    </script>
+  </body>
+</html>
